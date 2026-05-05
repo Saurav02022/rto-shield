@@ -11,7 +11,7 @@ This document is the single source of truth for how the FastAPI backend is struc
 - **Server:** Uvicorn (dev) / Gunicorn + Uvicorn workers (prod)
 - **Validation:** Pydantic v2
 - **Settings:** pydantic-settings
-- **Tests:** Pytest + pytest-asyncio + httpx.AsyncClient
+- **Tests:** Pytest + pytest-asyncio + Starlette `TestClient` (lifespan-aware) / `httpx.AsyncClient` when lifespan is wired explicitly
 - **Container:** Docker (production image uses only requirements.txt)
 
 ---
@@ -21,15 +21,15 @@ This document is the single source of truth for how the FastAPI backend is struc
 ```bash
 cd backend
 
-python3.12 -m venv venv
-venv/bin/python3.12 -m pip install -r requirements.txt
-venv/bin/python3.12 -m pip install -r requirements-dev.txt
+python3 -m venv venv
+venv/bin/python -m pip install -r requirements.txt
+venv/bin/python -m pip install -r requirements-dev.txt
 
 cp .env.example .env
 
 ./start.sh
 # OR
-venv/bin/python3.12 -m uvicorn app.main:app --reload --port 8000
+venv/bin/python -m uvicorn app.main:app --reload --port 8000
 ```
 
 Server: [http://localhost:8000](http://localhost:8000)
@@ -206,7 +206,7 @@ If you use SQLAlchemy (or another ORM) with versioned schema:
 
 ## Testing Rules
 
-* Use `pytest` + `httpx.AsyncClient` (with `ASGITransport` for async app tests).
+* Use `pytest`. For full-app HTTP tests, prefer Starlette **`TestClient`** so **lifespan runs** and `app.state` (e.g. database) is initialised. Use `httpx.AsyncClient` only when you explicitly run the ASGI lifespan alongside the client.
 * Mock **only** the repository layer (or DB client boundary).
 * Do **not** mock services or routers for behaviour tests — those layers are under test.
 * Use FastAPI **`dependency_overrides`** for fake auth and fake DB clients.

@@ -1,0 +1,54 @@
+# Environment (secrets)
+.env
+.env.local
+.env.*.local
+
+# Dependencies & virtual environments
+.venv/
+venv/
+env/
+
+# Bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# pytest & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Types & lint
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# Build / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+*.whl
+
+# Local databases & dumps (optional)
+*.db
+*.sqlite3
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs & temp
+*.log
+tmp/
+temp/
+
+# Jupyter (if used occasionally)
+.ipynb_checkpoints/

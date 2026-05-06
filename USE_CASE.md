@@ -120,7 +120,7 @@ POST /v1/agents/{agent_id}/calls
   "metadata": {
     "order_id": "ORD-10293",
     "brand_id": "BR-001",
-    "customer_name": "Saurav",
+    "customer_name": "Meera Rao",
     "product_summary": "Cotton kurta, size L",
     "order_value": 1299,
     "address_short": "Indiranagar, Bengaluru 560038",

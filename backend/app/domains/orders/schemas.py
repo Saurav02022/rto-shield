@@ -21,7 +21,7 @@ class OrderStatus(str, Enum):
 class OrderCreate(BaseModel):
     """Input payload to create a new order."""
 
-    customer_name: str = Field(..., examples=["Saurav"])
+    customer_name: str = Field(..., examples=["Priya Patel"])
     phone: str = Field(..., examples=["+919572365331"], description="E.164 format")
     product_summary: str = Field(..., examples=["Cotton Kurta size L"])
     order_value: int = Field(..., examples=[1299], ge=0)

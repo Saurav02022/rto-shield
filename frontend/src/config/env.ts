@@ -1,6 +1,9 @@
 /**
  * Centralised env access. Server-only secrets stay off the client bundle by
  * never exporting `process.env.*` from a `'use client'` file.
+ *
+ * Prod/staging backends are always supplied via `BACKEND_API_URL` / Cloud Run —
+ * localhost below is purely a DX fallback for `next dev`.
  */
 
 const fallbackBackend = "http://localhost:8000";

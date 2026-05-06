@@ -28,9 +28,14 @@ class BolnaError(Exception):
 class BolnaClient:
     """Stateless client; create per-request or reuse via dependency injection."""
 
-    def __init__(self, *, api_key: str, base_url: str = "https://api.bolna.ai") -> None:
+    def __init__(self, *, api_key: str, base_url: str) -> None:
         self._api_key = api_key
-        self._base_url = base_url.rstrip("/")
+        url = base_url.strip().rstrip("/")
+        self._base_url = url
+
+    def _require_base_url(self) -> None:
+        if not self._base_url:
+            raise BolnaError("BOLNA_API_BASE_URL is not configured.", status_code=None)
 
     async def place_call(
         self,
@@ -46,6 +51,7 @@ class BolnaClient:
         Returns Bolna's JSON, which contains `execution_id` and `status`.
         Raises ``BolnaError`` on non-2xx.
         """
+        self._require_base_url()
         payload: dict[str, Any] = {
             "agent_id": agent_id,
             "recipient_phone_number": recipient_phone_number,
@@ -86,6 +92,7 @@ class BolnaClient:
         Bolna's extraction LLM runs asynchronously after `call-disconnected`,
         and polling this endpoint is the deterministic way to resolve a call.
         """
+        self._require_base_url()
         url = f"{self._base_url}/executions/{execution_id}"
         headers = {"Authorization": f"Bearer {self._api_key}"}
 

@@ -8,7 +8,7 @@ import type { OrderResponse } from "@/types/api";
 
 const baseOrder: OrderResponse = {
   id: "ORD-1001",
-  customer_name: "Saurav",
+  customer_name: "Priya Patel",
   phone: "+919572365331",
   product_summary: "Cotton Kurta size L",
   order_value: 1299,
@@ -52,7 +52,7 @@ describe("Row", () => {
   it("renders the order data", () => {
     renderRow();
     expect(screen.getByText("ORD-1001")).toBeInTheDocument();
-    expect(screen.getByText("Saurav")).toBeInTheDocument();
+    expect(screen.getByText("Priya Patel")).toBeInTheDocument();
     expect(screen.getByText(/Cotton Kurta/)).toBeInTheDocument();
     expect(screen.getByText("Pending verification")).toBeInTheDocument();
   });

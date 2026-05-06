@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     BOLNA_API_KEY: str | None = None
     BOLNA_AGENT_ID: str | None = None
-    BOLNA_API_BASE_URL: str = "https://api.bolna.ai"
+    BOLNA_API_BASE_URL: str = Field(default="", validation_alias="BOLNA_API_BASE_URL")
     BOLNA_FROM_NUMBER: str | None = None
 
     DEMO_RECIPIENT_NUMBER: str | None = None

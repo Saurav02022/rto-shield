@@ -25,7 +25,7 @@ async def seed_demo_orders(store: Store) -> None:
 
     samples = [
         OrderCreate(
-            customer_name="Saurav",
+            customer_name="Riya Kapoor",
             phone=phone,
             product_summary="Cotton Kurta size L",
             order_value=1299,

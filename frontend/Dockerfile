@@ -20,6 +20,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Next standalone image copies /app/public; mkdir keeps Docker COPY valid when repo has no assets yet.
+RUN mkdir -p public
+
 ARG NEXT_PUBLIC_BACKEND_API_URL
 ENV NEXT_PUBLIC_BACKEND_API_URL=$NEXT_PUBLIC_BACKEND_API_URL
 

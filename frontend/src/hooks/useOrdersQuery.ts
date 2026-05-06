@@ -21,6 +21,9 @@ export function useOrdersQuery(options: Options = {}) {
   return useQuery<OrderListResponse>({
     queryKey: orderKeys.list(),
     queryFn: fetchOrders,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     ...options,
   });
 }

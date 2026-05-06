@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Providers } from "./providers";
+import { AppProviders } from "@/providers/AppProviders";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bolna",
-  description: "Assignment app",
+  title: "RTO Shield · Bolna Voice AI",
+  description:
+    "Pre-dispatch RTO prevention dashboard. Trigger Bolna voice calls for high-risk COD orders and capture outcomes.",
 };
 
 export default function RootLayout({
@@ -29,7 +30,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Providers>{children}</Providers>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

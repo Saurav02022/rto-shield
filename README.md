@@ -9,18 +9,19 @@ This repo satisfies the brief in [`Full Stack Assignment.md`](Full%20Stack%20Ass
 ## Contents
 
 1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Tech stack](#tech-stack)
-4. [Project structure](#project-structure)
-5. [Getting started](#getting-started)
-6. [Configuration](#configuration)
-7. [Testing](#testing)
-8. [CI and deployment](#ci-and-deployment)
-9. [API reference](#api-reference)
-10. [Reliability and caveats](#reliability-and-caveats)
-11. [Assignment submission](#assignment-submission)
-12. [Maintainer](#maintainer)
-13. [License](#license)
+2. [Live deployments](#live-deployments)
+3. [Architecture](#architecture)
+4. [Tech stack](#tech-stack)
+5. [Project structure](#project-structure)
+6. [Getting started](#getting-started)
+7. [Configuration](#configuration)
+8. [Testing](#testing)
+9. [CI and deployment](#ci-and-deployment)
+10. [API reference](#api-reference)
+11. [Reliability and caveats](#reliability-and-caveats)
+12. [Assignment submission](#assignment-submission)
+13. [Maintainer](#maintainer)
+14. [License](#license)
 
 ---
 
@@ -38,6 +39,21 @@ This repo satisfies the brief in [`Full Stack Assignment.md`](Full%20Stack%20Ass
 4. If payload is incomplete (common with async extraction) → **Refresh** re-pulls **`GET /executions/{id}`** and reuses the same normalisation path.
 
 **Outcome metric:** improve share of orders **confirmed dispatchable** vs **reschedule / address-change / cancel / unreachable** — full narrative + metrics framing in [`USE_CASE.md`](USE_CASE.md).
+
+---
+
+## Live deployments
+
+Canonical **production** HTTPS endpoints (GCP **asia-south1** Cloud Run, `main` CI/CD). If a revision ever gets a **new URL**, update this table — same values belong in GitHub **`BACKEND_API_URL`** / **`NEXT_PUBLIC_BACKEND_API_URL`** and as **Bolna’s webhook target**.
+
+| Surface | URL |
+|---------|-----|
+| **Frontend (dashboard)** | [bolna-frontend](https://bolna-frontend-3sacqleaea-el.a.run.app) — `https://bolna-frontend-3sacqleaea-el.a.run.app` |
+| **Backend API (base)** | [bolna-backend](https://bolna-backend-3sacqleaea-el.a.run.app) — `https://bolna-backend-3sacqleaea-el.a.run.app` |
+| **OpenAPI (Swagger)** | [ `/docs`](https://bolna-backend-3sacqleaea-el.a.run.app/docs) |
+| **Backend health** (CI smoke path) | [`GET /health`](https://bolna-backend-3sacqleaea-el.a.run.app/health) |
+| **Frontend BFF health** (CI smoke path) | [`GET /api/health`](https://bolna-frontend-3sacqleaea-el.a.run.app/api/health) |
+| **Bolna webhook** | `POST https://bolna-backend-3sacqleaea-el.a.run.app/webhooks/bolna` |
 
 ---
 
@@ -406,9 +422,7 @@ Runs on **every push and every pull request** (all branches): **pytest** and **t
 
 ### Post-deploy
 
-Each successful job writes the service URL into the **Actions summary** (`gcloud run services describe ...`). Configure Bolna’s webhook to:
-
-`POST https://<your-api-host>/webhooks/bolna`
+Each successful job still prints the refreshed service URL into the **Actions summary** (`gcloud run services describe ...`). Canonical reviewer-facing URLs (including webhook) stay in **[Live deployments](#live-deployments)** above — Bolna webhook: `POST https://bolna-backend-3sacqleaea-el.a.run.app/webhooks/bolna`.
 
 Implementation: [`backend/app/domains/calls/router.py`](backend/app/domains/calls/router.py).
 
@@ -451,7 +465,7 @@ Frontend mirrors mutations through **`/api/orders/...`** Next handlers (BFF).
 | 2 | Bolna agent | External agent config + [`bolna_client.py`](backend/app/shared/bolna_client.py), calls domain |
 | 3 | Web app solving workflow | [`frontend/src/`](frontend/src/) |
 | 4 | End-to-end demo | UI → API → Bolna → webhook/refresh → store |
-| 5 | Repo + deploy link + recording | GitHub Actions deploy summaries / `gcloud` for URLs · screen recording · deck |
+| 5 | Repo + deploy link + recording | **[Live deployments](#live-deployments)** (UI + API + webhook) · Actions summary if URLs drift · recording · deck |
 
 **Bolna submission pack:** Google Drive folder **`Saurav_kumar_FSE@bolna`** (deck + call recording etc.) · [submission form](https://forms.gle/g2YpvmjZm4ufb87XA).
 

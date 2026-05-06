@@ -3,6 +3,8 @@
 Python **FastAPI** service: orders lifecycle, Bolna outbound calls, **webhook ingestion**, optional **execution refresh**, and persistence behind a **`Store`** abstraction (**memory** locally / tests, **Firestore** in production on Cloud Run).
 
 > **Monorepo context:** end-to-end architecture, GCP deploy, GitHub Actions variables/secrets, and reliability notes live in [`../README.md`](../README.md).
+>
+> **Production (GCP Cloud Run):** [API base](https://bolna-backend-3sacqleaea-el.a.run.app) · OpenAPI **[`/docs`](https://bolna-backend-3sacqleaea-el.a.run.app/docs)** · full link table including Bolna webhook: [`README.md` — Live deployments](../README.md#live-deployments).
 
 ---
 

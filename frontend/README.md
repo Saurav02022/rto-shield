@@ -3,6 +3,8 @@
 Next.js **App Router** UI for the Bolna assignment: operators manage orders, trigger verification calls, and inspect outcomes. All **FastAPI** traffic is reached via **same-origin BFF routes** under `src/app/api/*` so the browser never needs direct access to production API keys or cross-origin admin URLs.
 
 > **Monorepo context:** system-level HLD, CI/CD, and Bolna ↔ GCP integration are documented in the repository root [`README.md`](../README.md).
+>
+> **Production (GCP Cloud Run):** [frontend UI](https://bolna-frontend-3sacqleaea-el.a.run.app) · full reviewer link table (`/docs`, webhook, health probes): [`README.md` — Live deployments](../README.md#live-deployments).
 
 ---
 

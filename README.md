@@ -12,19 +12,6 @@ Indian D2C brands lose **25–35% of every COD shipment to RTO** (Return-To-Orig
 
 ---
 
-## Demo
-
-<!--
-  TODO: add a screenshot or GIF of the dashboard — the highest-impact thing this README is missing.
-  Save it to docs/screenshot.png, then uncomment:
-
-  ![RTO Shield — orders dashboard](docs/screenshot.png)
--->
-
-_Screenshot pending._ Run it locally in ~2 minutes with the [quick start](#quick-start) below.
-
----
-
 ## How it works
 
 1. Orders land on the dashboard — seeded in-memory locally, Firestore in the cloud.

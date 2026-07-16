@@ -185,4 +185,4 @@ CI/CD pushes the same Dockerfile to Artifact Registry — see **`../.github/work
 ## Further reading
 
 - [`AGENTS.md`](AGENTS.md) — layering, naming, dependency rules for this codebase.
-- [`../README.md`](../README.md) — assignment overview, API table, GCP + Bolna webhook setup.
+- [`../README.md`](../README.md) — project overview, API table, GCP + Bolna webhook setup.

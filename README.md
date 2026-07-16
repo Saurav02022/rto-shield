@@ -1,8 +1,8 @@
-# Bolna Full-Stack Assignment — RTO Shield Ops Console
+# RTO Shield — Pre-Dispatch Verification Ops Console
 
 **RTO Shield** is a voice-AI-assisted **pre-dispatch verification** dashboard: operators trigger Bolna outbound calls against high–RTO-risk COD orders; the backend consumes **webhooks** and optional **execution polling**, persists state to **Firestore** in production, and the stack ships on **Google Cloud Run** with **Docker smoke tests** and **path-filtered CI/CD**.
 
-This repo satisfies the brief in [`Full Stack Assignment.md`](Full%20Stack%20Assignment.md): enterprise use case, Bolna agent integration, concrete web workflow, reproducible submission (GitHub + deploy + recording pack).
+A personal project exploring voice AI for logistics ops: a real enterprise use case (cutting COD RTO loss), a Bolna voice agent, a production web workflow, and a reproducible Cloud Run deployment. Full business framing lives in [`USE_CASE.md`](USE_CASE.md).
 
 ---
 
@@ -19,9 +19,8 @@ This repo satisfies the brief in [`Full Stack Assignment.md`](Full%20Stack%20Ass
 9. [CI and deployment](#ci-and-deployment)
 10. [API reference](#api-reference)
 11. [Reliability and caveats](#reliability-and-caveats)
-12. [Assignment submission](#assignment-submission)
-13. [Maintainer](#maintainer)
-14. [License](#license)
+12. [Maintainer](#maintainer)
+13. [License](#license)
 
 ---
 
@@ -63,7 +62,7 @@ Split into **HLD** (what exists in the system and how major pieces talk) and **L
 
 ### HLD: System context (full project)
 
-Logical view: **who** touches **which runtime**, and **where data + secrets** live. This is the “whole product” picture reviewers expect before opening folders.
+Logical view: **who** touches **which runtime**, and **where data + secrets** live. This is the “whole product” picture worth having before opening folders.
 
 ```mermaid
 flowchart TB
@@ -272,8 +271,8 @@ flowchart TB
 
 | Layer | Choice | Why it fits |
 |-------|--------|-------------|
-| Voice | **Bolna** | Telephony + agent runtime + executions API (assignment-aligned). |
-| API | **FastAPI**, Pydantic v2 | Async I/O, strict schemas, **`/docs` OpenAPI** for reviewer introspection. |
+| Voice | **Bolna** | Telephony + agent runtime + executions API. |
+| API | **FastAPI**, Pydantic v2 | Async I/O, strict schemas, **`/docs` OpenAPI** for introspection. |
 | Data | **Firestore** (prod), memory (dev/test) | Serverless affinity with Cloud Run; `STORE_BACKEND` toggles explicitly. |
 | Web | **Next.js 16** App Router, **TypeScript** | RSC for first paint data; **`src/` layout** per `frontend/AGENTS.md`. |
 | UI | **Tailwind v4**, **shadcn/ui**, **TanStack Query** | Accessible primitives + client cache invalidated after mutations. |
@@ -294,7 +293,6 @@ flowchart TB
 │   ├── deploy-backend.yml   # main + backend/** — build → smoke → AR → Cloud Run
 │   └── deploy-frontend.yml  # main + frontend/** — same pattern
 ├── USE_CASE.md              # Deep business + workflow write-up
-├── Full Stack Assignment.md # Original submission brief
 └── AGENTS.md                # Pointer to frontend/backend contributor guides
 ```
 
@@ -422,7 +420,7 @@ Runs on **every push and every pull request** (all branches): **pytest** and **t
 
 ### Post-deploy
 
-Each successful job still prints the refreshed service URL into the **Actions summary** (`gcloud run services describe ...`). Canonical reviewer-facing URLs (including webhook) stay in **[Live deployments](#live-deployments)** above — Bolna webhook: `POST https://bolna-backend-3sacqleaea-el.a.run.app/webhooks/bolna`.
+Each successful job still prints the refreshed service URL into the **Actions summary** (`gcloud run services describe ...`). Canonical public URLs (including webhook) stay in **[Live deployments](#live-deployments)** above — Bolna webhook: `POST https://bolna-backend-3sacqleaea-el.a.run.app/webhooks/bolna`.
 
 Implementation: [`backend/app/domains/calls/router.py`](backend/app/domains/calls/router.py).
 
@@ -430,7 +428,7 @@ Implementation: [`backend/app/domains/calls/router.py`](backend/app/domains/call
 
 ## API reference
 
-High-signal routes for reviewers (full detail in OpenAPI **`/docs`** when the backend is running):
+High-signal routes (full detail in OpenAPI **`/docs`** when the backend is running):
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -459,20 +457,6 @@ Frontend mirrors mutations through **`/api/orders/...`** Next handlers (BFF).
 
 ---
 
-## Assignment submission
-
-| # | Requirement | Evidence |
-|---|-------------|----------|
-| 1 | Enterprise use case | This **Overview** + [`USE_CASE.md`](USE_CASE.md) |
-| 2 | Bolna agent | External agent config + [`bolna_client.py`](backend/app/shared/bolna_client.py), calls domain |
-| 3 | Web app solving workflow | [`frontend/src/`](frontend/src/) |
-| 4 | End-to-end demo | UI → API → Bolna → webhook/refresh → store |
-| 5 | Repo + deploy link + recording | **[Live deployments](#live-deployments)** (UI + API + webhook) · Actions summary if URLs drift · recording · deck |
-
-**Bolna submission pack:** Google Drive folder **`Saurav_kumar_FSE@bolna`** (deck + call recording etc.) · [submission form](https://forms.gle/g2YpvmjZm4ufb87XA).
-
----
-
 ## Maintainer
 
 **Saurav Kumar** — AI voice integration (Bolna APIs + webhook/execution reconciliation), backend domain modelling and storage abstraction, Next.js/App Router frontend and BFF layer, Dockerfile + Cloud Run rollout, GitHub Actions (WIF, path deploys, smoke gates), and documentation of operational tradeoffs above.
@@ -481,4 +465,4 @@ Frontend mirrors mutations through **`/api/orders/...`** Next handlers (BFF).
 
 ## License
 
-Submission project for the Bolna hiring exercise. Third-party libraries remain under their respective licenses.
+Personal project by Saurav Kumar. Third-party libraries remain under their respective licenses.

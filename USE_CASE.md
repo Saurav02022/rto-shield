@@ -170,14 +170,14 @@ We instrument every one of these in the dashboard. The pitch line for any D2C fo
 
 ---
 
-## 7. End-to-end demo flow (assignment Objective 4)
+## 7. End-to-end demo flow
 
-This is the exact 90-second demo we will record:
+The end-to-end flow, as it runs live:
 
 1. **User (ops persona)** opens the web app, sees the Orders Inbox.
 2. Clicks **Verify** on a fresh COD order. Web app POSTs to backend.
 3. Backend calls **Bolna API** with order metadata → Bolna places real outbound call to the demo phone.
-4. The reviewer answers the phone, has a real 30-second conversation with the agent (in Hinglish or English).
+4. The customer answers the phone, has a real 30-second conversation with the agent (in Hinglish or English).
 5. Call ends → Bolna fires webhook → backend updates order status.
 6. Web app dashboard auto-refreshes — the order now shows `confirmed`, with full transcript visible in the side drawer.
 7. **The narrative line:** *"This single call just saved the brand ₹220 if the customer had said no, or earned them a clean ship if yes. Multiply by 10,000 orders/day."*
@@ -186,7 +186,7 @@ That is User → Web app → Agent → Backend logic → Output, demonstrated en
 
 ---
 
-## 8. What we will build in the 4-hour web app window
+## 8. What the web app covers (v1)
 
 In scope:
 
@@ -197,14 +197,14 @@ In scope:
 - Dashboard: orders list with status chip + transcript drawer
 - One-screen "metrics" view: RTO-saved counter (mock baseline math is fine for demo)
 
-Explicitly out of scope (and we will say so honestly in the deck):
+Explicitly out of scope (stated honestly up front):
 
 - Shopify/WooCommerce live sync (CSV is the stand-in)
 - Multi-tenant brand onboarding
 - Retry policies and call scheduling beyond manual trigger
 - Compliance flows (DLT, recording consent UI) — acknowledged, not built
 
-This honesty matters. Reviewers respect a clear "v1 vs. v2" split more than a half-baked "everything".
+This honesty matters. A clear "v1 vs. v2" split beats a half-baked "everything".
 
 ---
 
@@ -216,7 +216,7 @@ This honesty matters. Reviewers respect a clear "v1 vs. v2" split more than a ha
 - **Voice:** Bolna agent template adapted from "COD Confirmation" but rewritten for the *pre-dispatch* mental model (tone is service, not sales).
 - **Telephony:** Bolna's bundled provider (Vobiz integration per their Jan 2026 update) so we do not touch raw SIP.
 
-Total wiring: ~5 endpoints, ~3 tables, ~3 screens. Genuinely fits the 4-hour box.
+Total wiring: ~5 endpoints, ~3 tables, ~3 screens. Deliberately small and legible.
 
 ---
 
@@ -227,31 +227,29 @@ Total wiring: ~5 endpoints, ~3 tables, ~3 screens. Genuinely fits the 4-hour box
 | Customer does not pick up | Pickup rate ~60%; for misses, fall back to WhatsApp confirm card. Build retry policy in v2. |
 | Customer feels spammed | Limit to 1 verification call per order, polite tone, easy cancel path — verified by transcript audit. |
 | Wrong language detected | Bolna handles auto-switch; we still log `language_detected` for QA. |
-| Brand worried about losing sales to "cancel" path | Counter-argument: a cancel before dispatch is a 100% margin save vs. RTO. Show the math in the deck. |
+| Brand worried about losing sales to "cancel" path | Counter-argument: a cancel before dispatch is a 100% margin save vs. RTO. The math backs it. |
 | Compliance (DLT, consent) | Voice calls in India need consent + DLT registration for the calling number. We acknowledge it as a v2 production-readiness item. |
 
 ---
 
-## 11. Why this is the right pitch *for Bolna* specifically
+## 11. Why pre-dispatch is the right wedge
 
-Bolna's largest paying logos today (GoKwik, Hypothesis, Futwork) are concentrated in the e-commerce + payments funnel. Their existing templates dominate the **pre-checkout** moment. Their case studies do not yet show a strong **pre-dispatch** play.
+Voice-AI adoption in Indian e-commerce today concentrates on the **pre-checkout** moment — cart abandonment, COD confirmation, abandoned-checkout nudges. The **pre-dispatch** window is comparatively untouched, even though that is exactly where RTO loss is locked in.
 
-RTO Shield is the natural next product on the same customer's shelf. A reviewer at Bolna reading this should immediately think: *"This is the missing template in our gallery, and it slots cleanly next to Cart Abandonment and COD Confirmation."*
-
-That is the read I want them to have.
+RTO Shield sits in that gap: same customer, same telephony stack, a workflow that slots cleanly next to Cart Abandonment and COD Confirmation but targets the leak nobody is plugging yet.
 
 ---
 
-## 12. What I will deliver in the assignment package
+## 12. What this project delivers
 
 - This document (the thinking)
 - A Bolna agent configured and live (the voice)
-- Web app deployed (the surface)
-- A 90-second demo video showing User → App → Agent → Backend → Output on a real call
+- Web app deployed on Cloud Run (the surface)
+- A demo run showing User → App → Agent → Backend → Output on a real call
 - GitHub repo with clean README and run instructions
 
-That is the full chain the brief asks for.
+That is the full User → App → Agent → Backend → Output chain, working end to end.
 
 ---
 
-*Author: Saurav · For: Bolna Full-Stack Engineer assignment · Version: v1*
+*Author: Saurav Kumar · RTO Shield · Version: v1*

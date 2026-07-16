@@ -1,10 +1,10 @@
 # Backend — RTO Shield (FastAPI)
 
-Python **FastAPI** service: orders lifecycle, Bolna outbound calls, **webhook ingestion**, optional **execution refresh**, and persistence behind a **`Store`** abstraction (**memory** locally / tests, **Firestore** in production on Cloud Run).
+Python **FastAPI** service: orders lifecycle, Bolna outbound calls, **webhook ingestion**, optional **execution refresh**, and persistence behind a **`Store`** abstraction (**memory** locally / tests, **Firestore** when deployed on Cloud Run).
 
-> **Monorepo context:** end-to-end architecture, GCP deploy, GitHub Actions variables/secrets, and reliability notes live in [`../README.md`](../README.md).
+> **Monorepo context:** project overview in [`../README.md`](../README.md) · architecture reference in [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) · CI/CD, GCP setup, and the variable/secret matrix in [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).
 >
-> **Production (GCP Cloud Run):** [API base](https://bolna-backend-3sacqleaea-el.a.run.app) · OpenAPI **[`/docs`](https://bolna-backend-3sacqleaea-el.a.run.app/docs)** · full link table including Bolna webhook: [`README.md` — Live deployments](../README.md#live-deployments).
+> **Running it:** start locally with the [quick start](../README.md#quick-start) — OpenAPI lands on `http://localhost:8000/docs`. The original Cloud Run deployment is offline; see [deployment status](../docs/DEPLOYMENT.md#status).
 
 ---
 
@@ -178,11 +178,13 @@ docker run --rm -p 8080:8080 \
 
 Then: `curl -s http://localhost:8080/health`.
 
-CI/CD pushes the same Dockerfile to Artifact Registry — see **`../.github/workflows/deploy-backend.yml`** and root [`README.md`](../README.md#ci-and-deployment).
+CI/CD pushes the same Dockerfile to Artifact Registry — see **[`../.github/workflows/deploy-backend.yml`](../.github/workflows/deploy-backend.yml)** (manual `workflow_dispatch`) and [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).
 
 ---
 
 ## Further reading
 
 - [`AGENTS.md`](AGENTS.md) — layering, naming, dependency rules for this codebase.
-- [`../README.md`](../README.md) — project overview, API table, GCP + Bolna webhook setup.
+- [`../README.md`](../README.md) — project overview and quick start.
+- [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) — HLD/LLD, module maps, API surface.
+- [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) — CI/CD, GCP + Bolna webhook setup, configuration.

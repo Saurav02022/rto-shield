@@ -1,14 +1,11 @@
 name: deploy-backend
 
-# Deploy backend to Cloud Run only when `backend/` (or this workflow) changes on `main`.
+# Manual-only deploy to Cloud Run. Auto-deploy on push is disabled: the target
+# GCP project needs billing enabled + a WIF / service-account setup first.
+# Configure those, then run this from the Actions tab — or re-add a `push:` trigger.
 # Order: authenticate → docker build → run container smoke test (/health) → push → deploy.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "backend/**"
-      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 concurrency:

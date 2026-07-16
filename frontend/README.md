@@ -1,10 +1,10 @@
 # Frontend — RTO Shield (Next.js)
 
-Next.js **App Router** UI for RTO Shield: operators manage orders, trigger verification calls, and inspect outcomes. All **FastAPI** traffic is reached via **same-origin BFF routes** under `src/app/api/*` so the browser never needs direct access to production API keys or cross-origin admin URLs.
+Next.js **App Router** UI for RTO Shield: operators manage orders, trigger verification calls, and inspect outcomes. All **FastAPI** traffic is reached via **same-origin BFF routes** under `src/app/api/*` so the browser never needs direct access to API keys or cross-origin admin URLs.
 
-> **Monorepo context:** system-level HLD, CI/CD, and Bolna ↔ GCP integration are documented in the repository root [`README.md`](../README.md).
+> **Monorepo context:** project overview in [`../README.md`](../README.md) · system-level HLD/LLD in [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) · CI/CD and Bolna ↔ GCP integration in [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).
 >
-> **Production (GCP Cloud Run):** [frontend UI](https://bolna-frontend-3sacqleaea-el.a.run.app) · full link table (`/docs`, webhook, health probes): [`README.md` — Live deployments](../README.md#live-deployments).
+> **Running it:** start locally with the [quick start](../README.md#quick-start) — dashboard on `http://localhost:3000`. The original Cloud Run deployment is offline; see [deployment status](../docs/DEPLOYMENT.md#status).
 
 ---
 
@@ -127,7 +127,7 @@ Ensure the FastAPI backend is running (see [`../backend/README.md`](../backend/R
 | `BACKEND_API_URL` | Server only (`.env.local`, Cloud Run) | Base URL for `backendFetch` from RSC and route handlers. |
 | `NEXT_PUBLIC_BACKEND_API_URL` | Build + optional client | Public mirror; keep aligned if any client code reads it. |
 
-Templates: [`.env.example`](.env.example). **Production** values are injected via GitHub Variables → Cloud Run (see root [`README.md`](../README.md#configuration)).
+Templates: [`.env.example`](.env.example). Cloud values are injected via GitHub Variables → Cloud Run (see [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md#configuration)).
 
 ---
 
@@ -167,7 +167,7 @@ docker build \
 
 The image listens on **`PORT=8080`** (Cloud Run). Multi-stage build details: [`Dockerfile`](Dockerfile).
 
-Automated deploy: **`.github/workflows/deploy-frontend.yml`** (path-filtered on `frontend/**`) — see root README.
+Deploy workflow: **[`.github/workflows/deploy-frontend.yml`](../.github/workflows/deploy-frontend.yml)** — manual (`workflow_dispatch`); see [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).
 
 ---
 
@@ -175,4 +175,6 @@ Automated deploy: **`.github/workflows/deploy-frontend.yml`** (path-filtered on 
 
 - [`AGENTS.md`](AGENTS.md) — structure, patterns, and conventions for this codebase.
 - [`design.md`](design.md) / [`design-pattern.md`](design-pattern.md) — UI and composition notes.
-- [`../README.md`](../README.md) — full architecture, HLD/LLD, CI/CD, Bolna webhook URL.
+- [`../README.md`](../README.md) — project overview and quick start.
+- [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) — full HLD/LLD, module maps, API surface.
+- [`../docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) — CI/CD, GCP setup, Bolna webhook target.

@@ -1,13 +1,10 @@
 name: deploy-frontend
 
-# Deploy frontend to Cloud Run only when `frontend/` (or this workflow) changes on `main`.
+# Manual-only deploy to Cloud Run. Auto-deploy on push is disabled: the target
+# GCP project needs billing enabled + a WIF / service-account setup first.
+# Configure those, then run this from the Actions tab — or re-add a `push:` trigger.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "frontend/**"
-      - ".github/workflows/deploy-frontend.yml"
   workflow_dispatch:
 
 concurrency:

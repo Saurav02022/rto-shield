@@ -1,52 +1,124 @@
 # RTO Shield
 
-**Voice-AI pre-dispatch verification for COD e-commerce.** An ops console that calls the customer *before* the parcel ships — confirming intent, address, and delivery slot — so brands only dispatch orders that will actually be accepted.
+A voice-AI ops console that phones a cash-on-delivery customer *before* the parcel ships, so a brand only dispatches orders the customer actually confirmed. The genuinely hard part isn't the phone call — it's that the provider's post-call webhook arrives late, more than once, and often half-empty, and the order state has to stay correct through all of that.
 
-[![CI](https://github.com/Saurav02022/rto-shield/actions/workflows/ci.yml/badge.svg)](https://github.com/Saurav02022/rto-shield/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)
+Python · FastAPI · Next.js 16 · Bolna voice API · a voice console you can drive end to end on seed data
 
-Indian D2C brands lose **25–35% of every COD shipment to RTO** (Return-To-Origin), at roughly **₹150–₹300 burned per failed delivery**. The usual playbook is reactive — ship, hope, eat the loss. SMS and WhatsApp confirmations get under 15% open rates and verify nothing. RTO Shield flips the order of operations: a 45-second Hindi/English voice call *before* dispatch turns a guess into a decision.
-
-> **Why I built it:** it's a realistic slice of production voice-AI plumbing — async webhooks that arrive late, twice, or half-empty; a provider whose structured extraction lags the call-ended event; and a UI that has to stay truthful anyway. The full business framing (market numbers, metrics, scope) is in [`USE_CASE.md`](USE_CASE.md).
+> This is an open-ended take-home. It runs on three seeded demo orders (`ORD-1001…1003`) — there are no real order numbers, no production traffic, and no measured RTO figures in here. The business framing (market size, the RTO problem, scope) lives in [`USE_CASE.md`](USE_CASE.md); treat those numbers as industry context, not results this app produced.
 
 ---
 
-## How it works
+## What it does
 
-1. Orders land on the dashboard — seeded in-memory locally, Firestore in the cloud.
-2. Operator hits **Verify** → FastAPI asks Bolna to place an outbound call carrying order context (SKU, value, slot).
-3. Call ends → Bolna `POST`s a webhook → the backend normalizes the payload and persists the outcome.
-4. Extraction lagging behind the call? **Refresh** re-pulls `GET /executions/{id}` through the *same* normalisation path.
+An operator opens the dashboard, sees the COD orders, and clicks **Verify** on one:
 
-Every order resolves to one of: **confirmed dispatchable · reschedule · address-change · cancel · unreachable**. Ops ships only the first bucket.
+1. FastAPI asks Bolna to place an outbound call, handing it the order context (customer, product, value, address, slot) as agent variables.
+2. The agent runs a short scripted call — confirm intent, check the address, confirm the delivery slot — and hangs up.
+3. Bolna `POST`s a post-call webhook. The backend normalises it and maps the call outcome onto the order.
+4. If the structured extraction hasn't landed yet (Bolna's extraction step runs asynchronously, after the call already disconnected), the operator hits **Refresh**, which pulls `GET /executions/{id}` and replays it through the *same* code path.
 
-```mermaid
-sequenceDiagram
-  participant U as Operator
-  participant N as Next.js BFF_RSC
-  participant B as FastAPI
-  participant L as Bolna API
-  participant D as Store Firestore
+Every order lands in exactly one bucket: `ship_approved`, `address_correction_requested`, `reschedule_requested`, `cancelled`, `needs_followup`, or `unreachable`. Ops ships the first bucket and handles the rest before the courier is ever booked.
 
-  U->>N: Verify order
-  N->>B: POST orders id verify
-  B->>L: place_call with order context
-  B->>D: Upsert order + call
-  L-->>B: async post-call webhook
-  B->>D: Normalize idempotent persist
-  U->>N: Refresh if extraction lagged
-  N->>B: POST orders id refresh
-  B->>L: GET executions id
+---
+
+## Architecture
+
+Two services in a monorepo. A FastAPI backend does the real work; a Next.js App Router frontend is the console and a thin BFF in front of the API.
+
+The backend is layered the same way in every domain:
+
+```
+router  →  service  →  repository  →  Store (protocol)
+                  ↘  mutator (pure normalisation of external shapes)
 ```
 
+- **`router`** — FastAPI transport only. Parses the request, calls the service, returns a schema.
+- **`service`** — orchestration and the actual decisions (`CallService`, `OrderService`).
+- **`repository`** — a narrow wrapper over the `Store` protocol; no business logic.
+- **`Store`** — an async `Protocol` (`app/core/db.py`) with two implementations: `InMemoryStore` (dict-backed, used by every test and by local dev) and `FirestoreStore` (Cloud Firestore, used in the cloud). `STORE_BACKEND` picks one at startup; nothing above the repository knows which is live.
+- **`mutator`** — pure functions, no I/O or clocks, that turn Bolna's loose payloads and order edits into clean records. All the fiddly "Bolna might send this under five different keys" logic lives here and is unit-testable in isolation.
+
+The frontend never talks to FastAPI directly from the browser. Client components call same-origin `/api/*` route handlers, which proxy server-side through `backendFetch`, keeping `BACKEND_API_URL` out of the client bundle. Server Components load the first paint through the same fetcher.
+
+Domain conventions are written up in [`backend/AGENTS.md`](backend/AGENTS.md) and [`frontend/AGENTS.md`](frontend/AGENTS.md); the deeper HLD/LLD diagrams are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ---
 
-## Quick start
+## The hard part: idempotent, out-of-order webhooks
 
-**Prerequisites:** Python 3.12+ · Node.js 20+ · npm 11 · Docker (optional, reproduces the CI image)
+Bolna's delivery is best-effort. A single call produces a stream of webhooks — `initiated`, `ringing`, `in-progress`, then `call-disconnected` — and the useful `extracted_data` frequently arrives in a *second* terminal webhook, after an empty first one. Deliveries also repeat. So the handler has to survive three things at once: intermediate noise, duplicates, and a terminal event that arrives before the data it's supposed to carry.
 
-**Backend** — runs fully offline against the in-memory store:
+`CallService.handle_webhook` (`app/domains/calls/service.py`) is the single funnel for all of it. Two ideas do the work:
+
+- **Idempotency keyed on the call id.** The identifier Bolna sends as `id` is the key. Once an order has been finalised from a call, that call id is written to a `processed` set; a later duplicate short-circuits to a `duplicate` ack and changes nothing.
+- **A signal gate.** An order is only marked done — and the call id only marked processed — once a *meaningful* signal exists (real extractions, or a voicemail flag). A terminal-but-empty webhook is persisted as progress but leaves the order in `verifying`, so a fast, empty `call-disconnected` can't overwrite the real outcome that's still on its way.
+
+```mermaid
+flowchart TD
+  W["POST /webhooks/bolna"] --> CID{call_id present?}
+  CID -- no --> IGN["ack: missing_call_id"]
+  CID -- yes --> TERM{terminal status?}
+  TERM -- no --> PROG["persist call progress<br/>ack: non_terminal — no outcome"]
+  TERM -- yes --> DUP{already processed?}
+  DUP -- yes --> SKIP["ack: duplicate — no change"]
+  DUP -- no --> ORD{order resolvable?}
+  ORD -- no --> NF["ack: order_not_found"]
+  ORD -- yes --> SIG{meaningful signal?<br/>extractions or voicemail}
+  SIG -- no --> WAIT["persist call, keep order 'verifying'<br/>await follow-up webhook"]
+  SIG -- yes --> APPLY["map outcome → order status<br/>mark call_id processed"]
+```
+
+**One replay path, not two.** `Refresh` (`POST /orders/{id}/refresh`) pulls the canonical execution with `GET /executions/{id}` and feeds the response straight into `handle_webhook` — the executions payload and the webhook payload share a shape, so there's one normalisation pipeline to trust instead of two that drift. `?force=true` clears the processed mark first, which is how a late extraction gets re-applied to an order that already went terminal empty. This is also the recovery path after the in-memory store is wiped by a restart.
+
+One more wrinkle worth flagging: Bolna doesn't echo our `order_id` back in the webhook (it only persists keys declared as agent variables). So the handler resolves the order from the call record we wrote at trigger time, which always carries the linkage.
+
+### The Bolna client
+
+`app/shared/bolna_client.py` is a hand-rolled ~110-line `httpx` wrapper, not an SDK — two methods (`place_call`, `get_execution`), a typed `BolnaError` that carries the upstream status code, and per-request `AsyncClient` instances with a shared timeout. That's the whole integration surface. When Bolna's structured extraction is silent but the agent spoke its tagged outcome aloud, `mutator.py` mines it back out of the transcript with a small set of regexes — deliberately a demo-resilience fallback, not a substitute for fixing extraction upstream.
+
+---
+
+## API surface
+
+FastAPI, JSON in and out. Full schema at `/docs` when the server is running.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/health` | Liveness — also the container smoke check in CI |
+| `GET` | `/orders` | List orders |
+| `POST` | `/orders` | Create an order (pending verification) |
+| `GET` | `/orders/{id}` | Order + its latest call outcome |
+| `PATCH` | `/orders/{id}` | Edit customer/ops fields (Bolna-derived fields untouched) |
+| `DELETE` | `/orders/{id}` | Delete an order and its linked calls |
+| `POST` | `/orders/{id}/verify` | Place a Bolna outbound call |
+| `POST` | `/orders/{id}/refresh` | Re-pull the execution and reconcile |
+| `GET` | `/orders/{id}/calls` | Call history for an order, newest first |
+| `POST` | `/webhooks/bolna` | Bolna post-call webhook (always `200`, body is informational) |
+
+The webhook always returns `200` so Bolna won't retry on our account; the ack body (`applied`, `reason`) says what actually happened.
+
+---
+
+## Tests & limitations
+
+**19 pytest, 14 Vitest.** The backend suite runs fully offline against `InMemoryStore` and covers the parts that carry risk: the webhook state machine (duplicates, non-terminal noise, terminal-empty-then-populated ordering), outcome-tag normalisation, the transcript-mining fallback, order CRUD, and the seed/reconcile helpers. The frontend tests cover the API-response envelope, order-status rendering, and the orders row. Both suites run on every push and PR via [`ci.yml`](.github/workflows/ci.yml) (backend `pytest` with `STORE_BACKEND=memory`; frontend `typecheck` + `lint` + `test`).
+
+Known limitations, honestly:
+
+- **Auth is a stub.** `app/core/auth.py` exists but `require_auth_context` just raises `501` and is wired to no route. Every endpoint is currently open.
+- **The webhook is unauthenticated.** `/webhooks/bolna` does no signature verification — anyone who can reach it can drive order state. Fine for a take-home on seed data; a real deployment needs a shared-secret or signature check here first.
+- **Single-process idempotency in dev.** The in-memory `processed` set is per-process and resets on restart. Firestore makes it durable in the cloud, but there's no cross-instance locking, so two webhooks racing on the same call id could both pass the gate. `refresh` is the deterministic backstop.
+- **Firestore composite indexes.** The first complex list queries will want composite indexes; the console prints the exact YAML when they do.
+- **Transcript regex is a fallback, not a plan.** It buys demo resilience when extraction lags; the real fix is upstream in the agent's extraction config.
+- **CORS must enumerate real origins** — `*` is illegal while `allow_credentials=True`.
+
+---
+
+## Run it locally
+
+**Prerequisites:** Python 3.12+ · Node 20+ · npm 11 · Docker (optional, reproduces the CI image).
+
+**Backend** — runs fully offline on the in-memory store:
 
 ```bash
 cd backend
@@ -57,7 +129,7 @@ export STORE_BACKEND=memory
 uvicorn app.main:app --reload --port 8000
 ```
 
-→ API on `http://localhost:8000` · OpenAPI at [`/docs`](http://localhost:8000/docs) · health at `/health`
+API on `http://localhost:8000`, OpenAPI at `/docs`, health at `/health`. The store seeds three demo orders on first boot so the dashboard isn't empty.
 
 **Frontend:**
 
@@ -65,93 +137,47 @@ uvicorn app.main:app --reload --port 8000
 cd frontend
 npm ci
 cp .env.example .env.local
-npm run dev
+npm run dev        # http://localhost:3000
 ```
 
-→ dashboard on `http://localhost:3000`
+Placing a real call needs `BOLNA_API_KEY` and `BOLNA_AGENT_ID` in `backend/.env` (and, on the trial plan, a verified `DEMO_RECIPIENT_NUMBER` to route to). Without them the dashboard, CRUD, and everything except **Verify** still work. Every variable is documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
-Placing real calls needs Bolna credentials (`BOLNA_API_KEY`, `BOLNA_AGENT_ID`) in `backend/.env`. Without them the dashboard and full CRUD still work — only **Verify** needs the provider. Every variable is documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md#configuration).
+**Tests:**
+
+```bash
+cd backend && STORE_BACKEND=memory pytest -q
+cd frontend && npm run typecheck && npm run lint && npm test
+```
 
 ---
 
-## Tests
+## Deployment
 
-```bash
-cd backend && STORE_BACKEND=memory pytest -q          # API
-cd frontend && npm run typecheck && npm run lint && npm test   # UI
-```
+Built to run on Google Cloud Run: Docker image → Artifact Registry → Cloud Run, deployed from GitHub Actions authenticating keyless via **OIDC / Workload Identity Federation** (no long-lived service-account JSON in GitHub). Each deploy workflow builds the container, boots it on the runner, and `curl`s `/health` before anything is pushed to a registry — the image is gated, not just the source.
 
-Both run on every push and PR via [`ci.yml`](.github/workflows/ci.yml).
+**Status:** the original cloud deployment is offline — the GCP project it lived in has been decommissioned. The deploy workflows are kept as reference and are `workflow_dispatch`-only; point them at your own project to bring it back. Everything above runs locally without any of it.
 
 ---
 
 ## Tech stack
 
-| Layer | Choice | Why |
-|-------|--------|-----|
-| Voice | **Bolna** | Telephony + agent runtime + executions API in one provider. |
-| API | **FastAPI**, Pydantic v2 | Async I/O, strict schemas, OpenAPI for free. |
-| Data | **Firestore** (cloud), memory (dev/test) | Serverless affinity with Cloud Run; `STORE_BACKEND` toggles explicitly. |
-| Web | **Next.js 16** App Router, **TypeScript** | RSC for first paint; BFF routes keep the API private. |
-| UI | **Tailwind v4**, **shadcn/ui**, **TanStack Query** | Accessible primitives; cache invalidated after mutations. |
-| Quality | **pytest**, **Vitest**, ESLint, `tsc` | API + UI gates on every branch. |
-| Ship | **Docker**, **Artifact Registry**, **Cloud Run** | Immutable image → regional deploy, scale-to-zero. |
-| CI → GCP | **GitHub OIDC + WIF** | Short-lived federation; no static JSON keys in GitHub. |
-
----
-
-## Engineering notes
-
-The parts that were actually interesting to build:
-
-- **Webhooks lie.** Deliveries repeat, and Bolna's `extracted_data` frequently lands *after* `call-disconnected`. The handler is idempotent and only locks an order once a **meaningful** signal exists — otherwise a fast, empty webhook would starve the real payload. `refresh` re-pulls the execution through the identical normalisation path, so there's one code path to trust, not two that drift.
-- **Storage is a port, not a database.** Domains speak a `Store` protocol: `memory` backs local dev and the entire test suite, Firestore backs the cloud. Swapping backends rewrites no repository.
-- **The browser never sees the API.** Next route handlers under `/api/*` proxy server-side to FastAPI, keeping the API origin and provider keys out of the client bundle.
-- **CI gates the image, not just the code.** Both deploy workflows build the container, boot it on the runner, and curl its health endpoint *before* anything is pushed to a registry.
-
-**Known caveats:** the transcript regex fallback is demo resilience, not a substitute for fixing extraction upstream; Firestore may want composite indexes for complex list queries; CORS must enumerate real origins (`*` is illegal alongside credentials).
+| Layer | Choice |
+|-------|--------|
+| Backend | FastAPI, Pydantic v2, `httpx` (hand-rolled Bolna client) |
+| Voice | Bolna — telephony + agent runtime + executions API |
+| Storage | `Store` protocol → in-memory (dev/test) or Firestore (cloud), toggled by `STORE_BACKEND` |
+| Frontend | Next.js 16 App Router, React 19, TypeScript, TanStack Query, Tailwind v4, shadcn/ui |
+| CI/CD | GitHub Actions — pytest + Vitest on every push; dispatch-only Cloud Run deploy with a container smoke gate |
 
 ---
 
 ## Layout
 
 ```text
-├── backend/      FastAPI — domains/{orders,calls,health}, shared/bolna_client
-├── frontend/     Next.js App Router — application code under src/
-├── docs/         Architecture + deployment reference
-└── USE_CASE.md   Business framing: problem, metrics, scope
+├── backend/      FastAPI — domains/{orders,calls,health}, core/{db,settings,deps}, shared/bolna_client
+├── frontend/     Next.js App Router — src/{app,components,hooks,lib}
+├── docs/         ARCHITECTURE.md (HLD/LLD), DEPLOYMENT.md
+└── USE_CASE.md   Business framing: the RTO problem, market context, scope
 ```
 
-Contributor conventions live in [`backend/AGENTS.md`](backend/AGENTS.md) (Router → Service → Repository → Mutator) and [`frontend/AGENTS.md`](frontend/AGENTS.md) (`src/` layout).
-
----
-
-## Deployment
-
-Built to ship on **Google Cloud Run**: Docker → Artifact Registry → Cloud Run, deployed from GitHub Actions via **OIDC / Workload Identity Federation** (no long-lived service-account keys in GitHub).
-
-> **Status:** the original cloud deployment is **offline** — it lived in a GCP project that has since been decommissioned. The deploy workflows are kept as reference and are **manual-only** (`workflow_dispatch`); point them at your own GCP project to bring it back up. Everything runs locally via the [quick start](#quick-start).
-
-Setup, configuration reference, and the full variable/secret matrix: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
-
----
-
-## Docs
-
-| Doc | What's in it |
-|-----|--------------|
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | HLD + LLD diagrams, module maps, API surface, design decisions |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | CI/CD pipelines, GCP setup, configuration reference |
-| [`USE_CASE.md`](USE_CASE.md) | The business case: market numbers, metrics, scope, risks |
-
----
-
-## Author
-
 **Saurav Kumar** — [GitHub](https://github.com/Saurav02022)
-
-Built end to end: the Bolna voice integration and webhook/execution reconciliation, backend domain modelling and the storage abstraction, the Next.js App Router frontend and BFF layer, Docker + Cloud Run rollout, and the GitHub Actions pipeline (WIF federation, containerised smoke gates, path-filtered CI).
-
-## License
-
-Personal project by Saurav Kumar. Third-party libraries remain under their respective licenses.

@@ -227,7 +227,3 @@ Honest about what this is — an open-ended take-home on seed data:
 - **Firestore composite indexes.** The first complex list queries will want composite indexes; the console prints the exact YAML when they do.
 - **Transcript regex is a fallback, not a plan.** It buys demo resilience when extraction lags; the real fix is upstream in the agent's extraction config.
 - **CORS must enumerate real origins** — `*` is illegal while `allow_credentials=True`.
-
----
-
-**Saurav Kumar** — [GitHub](https://github.com/Saurav02022)
